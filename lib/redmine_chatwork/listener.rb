@@ -13,7 +13,6 @@ class ChatWorkListener < Redmine::Hook::Listener
     header = {
         :project => escape(issue.project),
         :title => escape(issue),
-        :url => object_url(issue),
         :assigned_to => escape(issue.assigned_to),
         :status => escape(issue.status.to_s),
         :by => escape(issue.author),
@@ -21,8 +20,9 @@ class ChatWorkListener < Redmine::Hook::Listener
     }
 
     body = escape issue.description if issue.description
+    footer = object_url(issue)
 
-    speak room, header, body
+    speak room, header, body, footer
   end
 
   def controller_issues_edit_after_save(context={})
@@ -39,7 +39,6 @@ class ChatWorkListener < Redmine::Hook::Listener
     header = {
         :project => escape(issue.project),
         :title => escape(issue),
-        :url => object_url(issue),
         :author => escape(issue.author),
         :assigned_to => escape(issue.assigned_to.to_s),
         :status => escape(issue.status.to_s),
@@ -48,7 +47,8 @@ class ChatWorkListener < Redmine::Hook::Listener
 
     body = escape journal.notes if journal.notes
     detail = journal.details.map { |d| detail_to_field d }
-    footer = detail.join
+    body += "\n" + detail.join
+    footer = object_url(issue)
 
     speak room, header, body, footer
   end
@@ -66,12 +66,12 @@ class ChatWorkListener < Redmine::Hook::Listener
     header = {
         :project => escape(project),
         :title => escape(page.title),
-        :url => object_url(page)
     }
 
     body = "#{page.content.author} updated the wiki"
+    footer = object_url(page)
 
-    speak room, header, body
+    speak room, header, body, footer
   end
 
   def speak(room, header, body=nil, footer=nil)
@@ -98,7 +98,8 @@ class ChatWorkListener < Redmine::Hook::Listener
 
     if header
       result +=
-          "[title]#{'['+header[:status]+']' if header[:status]} #{header[:title] if header[:title]} / #{header[:project] if header[:project]}\n#{header[:url] if header[:url]}\n#{'By: '+header[:by] if header[:by]}#{', Assignee: '+header[:assigned_to] if header[:assigned_to]}#{', Author: '+header[:author] if header[:author]}[/title]"
+          "[title]#{'['+header[:status]+']' if header[:status]} #{header[:title] if header[:title]} / #{header[:project] if header[:project]}\n" +
+          "#{'By: '+header[:by] if header[:by]}#{', Assignee: '+header[:assigned_to] if header[:assigned_to]}#{', Author: '+header[:author] if header[:author]}[/title]"
     end
 
     if body
@@ -106,7 +107,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     end
 
     if footer
-      result += "\n" + footer
+      result += "\n[hr]" + footer
     end
 
     result += '[/info]'
