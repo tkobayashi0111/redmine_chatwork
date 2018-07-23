@@ -74,6 +74,29 @@ class ChatWorkListener < Redmine::Hook::Listener
     speak room, header, body, footer
   end
 
+  def controller_agile_boards_update_after_save(context = {})
+    issue = context[:issue]
+    room = room_for_project issue.project
+    disabled = check_disabled issue.project
+
+    return if disabled
+    return unless room and Setting.plugin_redmine_chatwork['post_updates'] == '1'
+    return if issue.is_private?
+
+    header = {
+      :project => escape(issue.project),
+      :title => escape(issue),
+      :author => escape(issue.author),
+      :assigned_to => escape(issue.assigned_to.to_s),
+      :status => escape(issue.status.to_s),
+    }
+
+    body = nil
+    footer = object_url(issue)
+
+    speak room, header, body, footer
+  end
+
   def speak(room, header, body=nil, footer=nil)
     url = 'https://api.chatwork.com/v2/rooms/'
     token = Setting.plugin_redmine_chatwork['token']
@@ -99,7 +122,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     if header
       result +=
           "[title]#{'['+header[:status]+']' if header[:status]} #{header[:title] if header[:title]} / #{header[:project] if header[:project]}\n" +
-          "#{'By: '+header[:by] if header[:by]}#{', Assignee: '+header[:assigned_to] if header[:assigned_to]}#{', Author: '+header[:author] if header[:author]}[/title]"
+          "#{'By: '+header[:by]+', ' if header[:by]}#{'Assignee: '+header[:assigned_to]+', ' if header[:assigned_to]}#{'Author: '+header[:author] if header[:author]}[/title]"
     end
 
     if body
